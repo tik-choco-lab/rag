@@ -1,10 +1,35 @@
 package content
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"math"
 	"os"
+	"regexp"
 	"slices"
+	"strings"
 )
+
+func CleanText(text string) string {
+	re := regexp.MustCompile(`<[^>]*>`)
+	text = re.ReplaceAllString(text, "")
+
+	replacer := strings.NewReplacer(
+		"\r\n", "\n",
+		"\t", " ",
+	)
+	text = replacer.Replace(text)
+
+	re = regexp.MustCompile(`\n{3,}`)
+	text = re.ReplaceAllString(text, "\n\n")
+
+	return strings.TrimSpace(text)
+}
+
+func CalculateHash(text string) string {
+	hash := sha256.Sum256([]byte(text))
+	return hex.EncodeToString(hash[:])
+}
 
 const (
 	minSimilarity = -1e9

@@ -41,25 +41,22 @@ func main() {
 	dataStore := store.NewJSONStore(dbPath)
 	ctx := context.Background()
 
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		text, err := content.ReadTextFile(samplePath)
-		if err != nil {
-			log.Fatalf("Failed to read file: %v", err)
-		}
-
-		chunks := content.SplitText(text, cfg.Chunk.Size, cfg.Chunk.Overlap)
-		embeddings, err := client.CreateEmbeddings(ctx, chunks)
-		if err != nil {
-			log.Fatalf("Vectorization failed: %v", err)
-		}
-
-		if err := dataStore.Add(ctx, chunks, embeddings); err != nil {
-			log.Fatalf("Failed to store documents: %v", err)
-		}
-		fmt.Printf("Initialized store with %d chunks\n", len(chunks))
+	rawText, err := content.ReadTextFile(samplePath)
+	if err != nil {
+		log.Fatalf("Failed to read file: %v", err)
 	}
 
-	query := "RAGのメリットは何ですか？"
+	metadata := map[string]string{
+		"version": "v1.0",
+		"date":    "2024-02-04",
+	}
+
+	err = dataStore.AddDocument(ctx, samplePath, rawText, metadata, cfg.Chunk.Size, cfg.Chunk.Overlap, client.CreateEmbeddings)
+	if err != nil {
+		log.Fatalf("Failed to add document: %v", err)
+	}
+
+	query := "RAGのメリットは何ありますか？"
 	fmt.Printf("\n--- Query: %s ---\n", query)
 
 	queryEmbedding, err := client.CreateEmbedding(ctx, query)
@@ -67,7 +64,16 @@ func main() {
 		log.Fatalf("Query embedding failed: %v", err)
 	}
 
-	results, err := dataStore.Search(ctx, queryEmbedding, cfg.Retrieval.TopK, cfg.Retrieval.Threshold, cfg.Retrieval.MMRLambda)
+	searchOpts := store.SearchOptions{
+		TopK:      cfg.Retrieval.TopK,
+		Threshold: cfg.Retrieval.Threshold,
+		MMRLambda: cfg.Retrieval.MMRLambda,
+		Metadata: map[string]string{
+			"version": "v1.0",
+		},
+	}
+
+	results, err := dataStore.Search(ctx, queryEmbedding, searchOpts)
 	if err != nil {
 		log.Fatalf("Search failed: %v", err)
 	}

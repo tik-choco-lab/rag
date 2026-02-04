@@ -10,6 +10,7 @@
     "retrieval": {
         "top_k": 5,
         "threshold": 0.1,
-        "mmr_lambda": 0.5
+        "mmr_lambda": 0.5,
+        "recency_weight": 0.2
     }
 }

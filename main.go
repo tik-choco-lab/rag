@@ -65,15 +65,17 @@ func main() {
 	}
 
 	searchOpts := store.SearchOptions{
-		TopK:      cfg.Retrieval.TopK,
-		Threshold: cfg.Retrieval.Threshold,
-		MMRLambda: cfg.Retrieval.MMRLambda,
+		TopK:          cfg.Retrieval.TopK,
+		Threshold:     cfg.Retrieval.Threshold,
+		MMRLambda:     cfg.Retrieval.MMRLambda,
+		RecencyWeight: cfg.Retrieval.RecencyWeight,
 		Metadata: map[string]string{
 			"version": "v1.0",
 		},
 	}
 
-	results, err := dataStore.Search(ctx, queryEmbedding, searchOpts)
+	results, err := dataStore.RecencySearch(ctx, queryEmbedding, searchOpts)
+
 	if err != nil {
 		log.Fatalf("Search failed: %v", err)
 	}

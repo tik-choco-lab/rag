@@ -20,9 +20,10 @@ type ChunkConfig struct {
 }
 
 type RetrievalConfig struct {
-	TopK      int     `json:"top_k"`
-	Threshold float32 `json:"threshold"`
-	MMRLambda float32 `json:"mmr_lambda"`
+	TopK          int     `json:"top_k"`
+	Threshold     float32 `json:"threshold"`
+	MMRLambda     float32 `json:"mmr_lambda"`
+	RecencyWeight float32 `json:"recency_weight"`
 }
 
 type Config struct {
@@ -40,9 +41,10 @@ func LoadConfig(path string) (*Config, error) {
 			Overlap: 50,
 		},
 		Retrieval: RetrievalConfig{
-			TopK:      5,
-			Threshold: 0.7,
-			MMRLambda: 0.5,
+			TopK:          5,
+			Threshold:     0.7,
+			MMRLambda:     0.5,
+			RecencyWeight: 0.2,
 		},
 	}
 

@@ -4,9 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"slices"
+	"time"
 
 	"github.com/tik-choco-lab/rag/pkg/content"
 )
+
+var jst = time.FixedZone("Asia/Tokyo", 9*60*60)
 
 type record struct {
 	DocID     string            `json:"doc_id"`
@@ -14,6 +18,8 @@ type record struct {
 	Text      string            `json:"text"`
 	Embedding []float32         `json:"embedding"`
 	Metadata  map[string]string `json:"metadata"`
+	CreatedAt int64             `json:"created_at"`
+	Date      string            `json:"date"`
 }
 
 type jsonStore struct {
@@ -52,6 +58,10 @@ func (s *jsonStore) AddDocument(ctx context.Context, docID string, text string, 
 		return err
 	}
 
+	now := time.Now().In(jst)
+	timestamp := now.Unix()
+	isoDate := now.Format(time.RFC3339)
+
 	for i, chunk := range chunks {
 		s.records = append(s.records, record{
 			DocID:     docID,
@@ -59,6 +69,8 @@ func (s *jsonStore) AddDocument(ctx context.Context, docID string, text string, 
 			Text:      chunk,
 			Embedding: embeddings[i],
 			Metadata:  metadata,
+			CreatedAt: timestamp,
+			Date:      isoDate,
 		})
 	}
 
@@ -70,14 +82,7 @@ func (s *jsonStore) Search(ctx context.Context, queryEmbedding []float32, option
 	var filteredEmbeddings [][]float32
 
 	for _, r := range s.records {
-		match := true
-		for k, v := range options.Metadata {
-			if r.Metadata[k] != v {
-				match = false
-				break
-			}
-		}
-		if match {
+		if s.matchMetadata(r.Metadata, options.Metadata) {
 			filteredChunks = append(filteredChunks, r.Text)
 			filteredEmbeddings = append(filteredEmbeddings, r.Embedding)
 		}
@@ -90,6 +95,68 @@ func (s *jsonStore) Search(ctx context.Context, queryEmbedding []float32, option
 	return content.SearchTopK(queryEmbedding, filteredChunks, filteredEmbeddings, options.TopK, options.Threshold, options.MMRLambda), nil
 }
 
+func (s *jsonStore) RecencySearch(ctx context.Context, queryEmbedding []float32, options SearchOptions) ([]content.SearchResult, error) {
+	var filtered []record
+	var maxTS, minTS int64
+
+	for _, r := range s.records {
+		if s.matchMetadata(r.Metadata, options.Metadata) {
+			filtered = append(filtered, r)
+			if r.CreatedAt > maxTS {
+				maxTS = r.CreatedAt
+			}
+			if minTS == 0 || r.CreatedAt < minTS {
+				minTS = r.CreatedAt
+			}
+		}
+	}
+
+	if len(filtered) == 0 {
+		return nil, nil
+	}
+
+	chunks := make([]string, len(filtered))
+	embeddings := make([][]float32, len(filtered))
+	for i, r := range filtered {
+		chunks[i] = r.Text
+		embeddings[i] = r.Embedding
+	}
+
+	results := content.SearchTopK(queryEmbedding, chunks, embeddings, len(filtered), options.Threshold, 1.0)
+
+	for i := range results {
+		var ts int64
+		for _, r := range filtered {
+			if r.Text == results[i].Text {
+				ts = r.CreatedAt
+				break
+			}
+		}
+
+		timeScore := float32(0)
+		if maxTS != minTS {
+			timeScore = float32(ts-minTS) / float32(maxTS-minTS)
+		}
+
+		results[i].Score = (1.0-options.RecencyWeight)*results[i].Score + options.RecencyWeight*timeScore
+	}
+
+	slices.SortFunc(results, func(a, b content.SearchResult) int {
+		if a.Score > b.Score {
+			return -1
+		}
+		if a.Score < b.Score {
+			return 1
+		}
+		return 0
+	})
+
+	if len(results) > options.TopK {
+		return results[:options.TopK], nil
+	}
+	return results, nil
+}
+
 func (s *jsonStore) DeleteDocument(ctx context.Context, docID string) error {
 	var newRecords []record
 	for _, r := range s.records {
@@ -99,6 +166,15 @@ func (s *jsonStore) DeleteDocument(ctx context.Context, docID string) error {
 	}
 	s.records = newRecords
 	return s.save()
+}
+
+func (s *jsonStore) matchMetadata(recordMeta, searchMeta map[string]string) bool {
+	for k, v := range searchMeta {
+		if recordMeta[k] != v {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *jsonStore) save() error {

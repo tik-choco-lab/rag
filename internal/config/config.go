@@ -14,14 +14,25 @@ type APIConfig struct {
 	EmbeddingModel string `json:"embedding_model"`
 }
 
+type ChunkConfig struct {
+	Size    int `json:"size"`
+	Overlap int `json:"overlap"`
+}
+
 type Config struct {
-	API APIConfig `json:"api"`
+	API   APIConfig   `json:"api"`
+	Chunk ChunkConfig `json:"chunk"`
 }
 
 func LoadConfig(path string) (*Config, error) {
 	_ = godotenv.Load()
 
-	cfg := &Config{}
+	cfg := &Config{
+		Chunk: ChunkConfig{
+			Size:    500,
+			Overlap: 50,
+		},
+	}
 
 	if path != "" {
 		if _, err := os.Stat(path); err == nil {

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/tik-choco-lab/rag/internal/config"
+	"github.com/tik-choco-lab/rag/pkg/content"
 	"github.com/tik-choco-lab/rag/pkg/llm"
 )
 
@@ -31,24 +32,32 @@ func main() {
 
 	ctx := context.Background()
 
-	fmt.Println("--- Chat Test ---")
-	prompt := "Go言語のインターフェースのメリットを簡潔に教えてください。"
-	response, err := client.Chat(ctx, prompt)
+	fmt.Println("--- Text Input ---")
+	text, err := content.ReadTextFile("sample.txt")
 	if err != nil {
-		log.Printf("Chat error: %v", err)
-	} else {
-		fmt.Printf("Prompt: %s\nResponse: %s\n", prompt, response)
+		log.Fatalf("Failed to read file: %v", err)
+	}
+	fmt.Printf("Read %d characters from sample.txt\n", len(text))
+
+	fmt.Println("\n--- Chunking ---")
+	chunks := content.SplitText(text, cfg.Chunk.Size, cfg.Chunk.Overlap)
+	fmt.Printf("Split into %d chunks (Size: %d, Overlap: %d)\n", len(chunks), cfg.Chunk.Size, cfg.Chunk.Overlap)
+	for i, c := range chunks {
+		r := []rune(c)
+		displayLen := 20
+		if len(r) < displayLen {
+			displayLen = len(r)
+		}
+		fmt.Printf("Chunk %d (%d chars): %s...\n", i, len(r), string(r[:displayLen]))
 	}
 
-	fmt.Println("\n--- Embedding Test ---")
-	text := "これは埋め込みテスト用のテキストです。"
-	embedding, err := client.CreateEmbedding(ctx, text)
+	fmt.Println("\n--- Vectorization ---")
+	embeddings, err := client.CreateEmbeddings(ctx, chunks)
 	if err != nil {
-		log.Printf("Embedding error: %v", err)
-	} else {
-		fmt.Printf("Text: %s\nEmbedding vector length: %d\n", text, len(embedding))
-		if len(embedding) > 0 {
-			fmt.Printf("First 3 dimensions: %v\n", embedding[:3])
-		}
+		log.Fatalf("Vectorization failed: %v", err)
+	}
+	fmt.Printf("Successfully generated %d embeddings\n", len(embeddings))
+	if len(embeddings) > 0 {
+		fmt.Printf("Vector dimension: %d\n", len(embeddings[0]))
 	}
 }

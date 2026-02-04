@@ -7,7 +7,6 @@
 *.out
 go.work
 bin/
-*.json
 logs/
 .env
 *.txt

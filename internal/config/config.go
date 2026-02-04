@@ -19,9 +19,16 @@ type ChunkConfig struct {
 	Overlap int `json:"overlap"`
 }
 
+type RetrievalConfig struct {
+	TopK      int     `json:"top_k"`
+	Threshold float32 `json:"threshold"`
+	MMRLambda float32 `json:"mmr_lambda"`
+}
+
 type Config struct {
-	API   APIConfig   `json:"api"`
-	Chunk ChunkConfig `json:"chunk"`
+	API       APIConfig       `json:"api"`
+	Chunk     ChunkConfig     `json:"chunk"`
+	Retrieval RetrievalConfig `json:"retrieval"`
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -31,6 +38,11 @@ func LoadConfig(path string) (*Config, error) {
 		Chunk: ChunkConfig{
 			Size:    500,
 			Overlap: 50,
+		},
+		Retrieval: RetrievalConfig{
+			TopK:      5,
+			Threshold: 0.7,
+			MMRLambda: 0.5,
 		},
 	}
 

@@ -1,0 +1,15 @@
+{
+    "api": {
+        "model": "gpt-oss:20b",
+        "embedding_model": "bge-m3"
+    },
+    "chunk": {
+        "size": 512,
+        "overlap": 128
+    },
+    "retrieval": {
+        "top_k": 5,
+        "threshold": 0.1,
+        "mmr_lambda": 0.5
+    }
+}

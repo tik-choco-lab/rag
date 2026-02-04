@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -26,25 +27,53 @@ type RetrievalConfig struct {
 	RecencyWeight float32 `json:"recency_weight"`
 }
 
+type PostgresConfig struct {
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	User     string `json:"user"`
+	Password string `json:"password"`
+	DBName   string `json:"dbname"`
+	SSLMode  string `json:"sslmode"`
+}
+
 type Config struct {
 	API       APIConfig       `json:"api"`
 	Chunk     ChunkConfig     `json:"chunk"`
 	Retrieval RetrievalConfig `json:"retrieval"`
+	Postgres  PostgresConfig  `json:"postgres"`
+	StoreType string          `json:"store_type"`
 }
+
+const (
+	defaultChunkSize     = 500
+	defaultChunkOverlap  = 50
+	defaultTopK          = 5
+	defaultThreshold     = 0.1
+	defaultMMRLambda     = 0.5
+	defaultRecencyWeight = 0.2
+	defaultPostgresPort  = 5432
+	defaultStoreType     = "json"
+	defaultSSLMode       = "disable"
+)
 
 func LoadConfig(path string) (*Config, error) {
 	_ = godotenv.Load()
 
 	cfg := &Config{
 		Chunk: ChunkConfig{
-			Size:    500,
-			Overlap: 50,
+			Size:    defaultChunkSize,
+			Overlap: defaultChunkOverlap,
 		},
 		Retrieval: RetrievalConfig{
-			TopK:          5,
-			Threshold:     0.7,
-			MMRLambda:     0.5,
-			RecencyWeight: 0.2,
+			TopK:          defaultTopK,
+			Threshold:     defaultThreshold,
+			MMRLambda:     defaultMMRLambda,
+			RecencyWeight: defaultRecencyWeight,
+		},
+		StoreType: defaultStoreType,
+		Postgres: PostgresConfig{
+			Port:    defaultPostgresPort,
+			SSLMode: defaultSSLMode,
 		},
 	}
 
@@ -71,6 +100,26 @@ func LoadConfig(path string) (*Config, error) {
 	}
 	if embModel := os.Getenv("OPENAI_EMBEDDING_MODEL"); embModel != "" {
 		cfg.API.EmbeddingModel = embModel
+	}
+	if v := os.Getenv("POSTGRES_HOST"); v != "" {
+		cfg.Postgres.Host = v
+	}
+	if v := os.Getenv("POSTGRES_PORT"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
+			cfg.Postgres.Port = p
+		}
+	}
+	if v := os.Getenv("POSTGRES_USER"); v != "" {
+		cfg.Postgres.User = v
+	}
+	if v := os.Getenv("POSTGRES_PASSWORD"); v != "" {
+		cfg.Postgres.Password = v
+	}
+	if v := os.Getenv("POSTGRES_DBNAME"); v != "" {
+		cfg.Postgres.DBName = v
+	}
+	if v := os.Getenv("POSTGRES_SSLMODE"); v != "" {
+		cfg.Postgres.SSLMode = v
 	}
 
 	return cfg, nil

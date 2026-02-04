@@ -16,6 +16,7 @@ const (
 	configPath     = "config.json"
 	samplePath     = "sample.txt"
 	dbPath         = "store.json"
+	tableName      = "documents"
 	displayLen     = 20
 	searchSliceLen = 50
 )
@@ -38,7 +39,20 @@ func main() {
 		EmbeddingModel: cfg.API.EmbeddingModel,
 	})
 
-	dataStore := store.NewJSONStore(dbPath)
+	var dataStore store.Store
+	if cfg.StoreType == "postgres" {
+		connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+			cfg.Postgres.Host, cfg.Postgres.Port, cfg.Postgres.User, cfg.Postgres.Password, cfg.Postgres.DBName, cfg.Postgres.SSLMode)
+		var err error
+		dataStore, err = store.NewPostgresStore(connStr, tableName)
+		if err != nil {
+			log.Fatalf("Failed to initialize postgres store: %v", err)
+		}
+		fmt.Println("Using Postgres Store")
+	} else {
+		dataStore = store.NewJSONStore(dbPath)
+		fmt.Println("Using JSON Store")
+	}
 	ctx := context.Background()
 
 	rawText, err := content.ReadTextFile(samplePath)

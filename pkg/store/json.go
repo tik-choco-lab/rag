@@ -10,7 +10,12 @@ import (
 	"github.com/tik-choco-lab/rag/pkg/content"
 )
 
-var jst = time.FixedZone("Asia/Tokyo", 9*60*60)
+const (
+	jstOffset       = 9 * 60 * 60
+	defaultFilePerm = 0644
+)
+
+var jst = time.FixedZone("Asia/Tokyo", jstOffset)
 
 type record struct {
 	DocID     string            `json:"doc_id"`
@@ -182,7 +187,7 @@ func (s *jsonStore) save() error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.path, data, 0644)
+	return os.WriteFile(s.path, data, defaultFilePerm)
 }
 
 func (s *jsonStore) load() error {

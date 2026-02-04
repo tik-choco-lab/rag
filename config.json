@@ -12,5 +12,6 @@
         "threshold": 0.1,
         "mmr_lambda": 0.5,
         "recency_weight": 0.2
-    }
+    },
+    "store_type": "json"
 }

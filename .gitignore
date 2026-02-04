@@ -10,3 +10,4 @@ bin/
 logs/
 .env
 *.txt
+store.json

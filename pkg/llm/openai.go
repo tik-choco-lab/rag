@@ -69,6 +69,30 @@ func (c *openAIClient) Chat(ctx context.Context, prompt string) (string, error) 
 	return resp.Choices[0].Message.Content, nil
 }
 
+func (c *openAIClient) ChatMessages(ctx context.Context, msgs []openai.ChatCompletionMessage) (string, error) {
+	if c.model == "" {
+		return "", fmt.Errorf("chat model is not configured")
+	}
+
+	resp, err := c.api.CreateChatCompletion(
+		ctx,
+		openai.ChatCompletionRequest{
+			Model:    c.model,
+			Messages: msgs, // そのまま渡す
+		},
+	)
+
+	if err != nil {
+		return "", fmt.Errorf("chat completion failed: %w", err)
+	}
+
+	if len(resp.Choices) == 0 {
+		return "", fmt.Errorf("no response choices returned from API")
+	}
+
+	return resp.Choices[0].Message.Content, nil
+}
+
 func (c *openAIClient) CreateEmbedding(ctx context.Context, text string) ([]float32, error) {
 	embeddings, err := c.CreateEmbeddings(ctx, []string{text})
 	if err != nil {
